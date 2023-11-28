@@ -31,11 +31,11 @@ exports.isAuthenticatedUser = catchAsyncErrors(async (req, res, next) => {
 exports.authorizeRoles = (...roles) => {
   return (req, res, next) => {
     //User can have multiple groups delimited by ,{group},{group}. We need to split them into an array
-    req.user.groups = req.user.groups.split(",")
+    req.user.grouplist = req.user.grouplist.split(",")
     //if any of the user's groups is included in the roles array, then the user is authorized
-    authorised = req.user.groups.some(r => roles.includes(r))
+    authorised = req.user.grouplist.some(r => roles.includes(r))
     if (!authorised) {
-      return next(new ErrorHandler(`Role (${req.user.groups}) is not allowed to access this resource`, 403))
+      return next(new ErrorHandler(`Role (${req.user.grouplist}) is not allowed to access this resource`, 403))
     }
     next()
   }

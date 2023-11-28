@@ -5,7 +5,7 @@ const { loginUser, logout, registerUser } = require("../controllers/authControll
 const { isAuthenticatedUser, authorizeRoles } = require("../middleware/auth")
 
 router.route("/login").post(loginUser)
-router.route("/logout").get(isAuthenticatedUser, logout)
+router.route("/_logout").get(isAuthenticatedUser, logout)
 router.route("/register").post(isAuthenticatedUser, authorizeRoles("admin"), registerUser)
 
 module.exports = router

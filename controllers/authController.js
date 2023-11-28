@@ -45,9 +45,10 @@ exports.logout = catchAsyncErrors(async (req, res, next) => {
 
 // Create a user => /api/v1/register
 exports.registerUser = catchAsyncErrors(async (req, res, next) => {
-  const { username, email, password, group } = req.body
+  const { username, email, password, grouplist } = req.body
 
-  const result = await connection.promise().execute("INSERT INTO user (username, password, email, `groups`, is_disabled) VALUES (?,?,?,?,?)", [username, password, email, group, 0])
+  const result = await connection.promise().execute("INSERT INTO user (username, password, email, grouplist, is_disabled) VALUES (?,?,?,?,?)", [username, password, email, grouplist, 0])
+  // console.log(username)
   if (result[0].affectedRows === 0) {
     return next(new ErrorResponse("Failed to create user", 500))
   }
@@ -73,10 +74,14 @@ const sendToken = (user, statusCode, res) => {
   //     options.secure = true;
   // }
 
-  res.status(statusCode).cookie("token", token, options).json({
-    success: true,
-    token
-  })
+  res
+    .status(statusCode)
+    .cookie("token", token, options)
+    .json({
+      success: true,
+      message: "Welcome " + jwt.verify(token, process.env.JWT_SECRET).username + "!",
+      token
+    })
 }
 
 const getJwtToken = user => {

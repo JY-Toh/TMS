@@ -1,5 +1,6 @@
 const express = require("express")
 const app = express()
+const cors = require("cors")
 
 const dotenv = require("dotenv")
 const cookieParser = require("cookie-parser")
@@ -19,10 +20,6 @@ const connection = require("./config/database")
 const errorMiddleware = require("./middleware/errors")
 const ErrorHandler = require("./utils/errorHandler")
 
-/*const query = connection.query("SELECT * FROM user", function (error, result, fields) {
-  console.log(result)
-  console.log(fields)
-})*/
 
 //Setting up body parser
 app.use(express.json())
@@ -30,19 +27,24 @@ app.use(express.json())
 //Setting up cookie parser
 app.use(cookieParser())
 
+//Setting up CORS
+app.use(cors())
+
 //Importing routes
 const auth = require("./routes/auth")
+const user = require("./routes/user")
 
 //Mounting routes
 app.use("/api/v1/", auth)
+app.use("/api/v1/", user)
 
 //Handle unhandled routes
-app.all("*", (req, res, next) => {
-  res.status(404).json({
-    success: false,
-    message: "Page not found"
-  })
-})
+// app.all("*", (req, res, next) => {
+//   res.status(404).json({
+//     success: false,
+//     message: "Page not found"
+//   })
+// })
 
 //Middleware to handle errors
 app.use(errorMiddleware)
@@ -59,4 +61,8 @@ process.on("unhandledRejection", err => {
   server.close(() => {
     process.exit(1)
   })
+})
+
+app.get("/api/v1/login", (req, res) => {
+  res.json({ message: "Hello from server! " })
 })
