@@ -1,7 +1,6 @@
 const express = require("express")
 const app = express()
 const cors = require("cors")
-
 const dotenv = require("dotenv")
 const cookieParser = require("cookie-parser")
 
@@ -17,9 +16,7 @@ process.on("uncaughtException", err => {
 
 //Setting up database connection
 const connection = require("./config/database")
-const errorMiddleware = require("./middleware/errors")
 const ErrorHandler = require("./utils/errorHandler")
-
 
 //Setting up body parser
 app.use(express.json())
@@ -31,12 +28,10 @@ app.use(cookieParser())
 app.use(cors())
 
 //Importing routes
-const auth = require("./routes/auth")
-const user = require("./routes/user")
+const route = require("./route")
 
 //Mounting routes
-app.use("/api/v1/", auth)
-app.use("/api/v1/", user)
+app.use("/", route)
 
 //Handle unhandled routes
 // app.all("*", (req, res, next) => {
@@ -45,9 +40,6 @@ app.use("/api/v1/", user)
 //     message: "Page not found"
 //   })
 // })
-
-//Middleware to handle errors
-app.use(errorMiddleware)
 
 const PORT = process.env.PORT
 const server = app.listen(PORT, () => {
@@ -63,6 +55,6 @@ process.on("unhandledRejection", err => {
   })
 })
 
-app.get("/api/v1/login", (req, res) => {
+app.get("/", (req, res) => {
   res.json({ message: "Hello from server! " })
 })

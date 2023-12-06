@@ -8,7 +8,7 @@ const { userProfile, viewUsers, updateProfile, addGroup } = require("../controll
 
 router.route("/viewUsers").get(isAuthenticatedUser, authorizeRoles("admin"), viewUsers)
 router.route("/profile").get(isAuthenticatedUser, userProfile)
-router.route("/profile/update").put(isAuthenticatedUser, updateProfile)
+router.route("/profile/update").post(isAuthenticatedUser, updateProfile)
 router.route("/addGroup").post(isAuthenticatedUser, authorizeRoles("admin"), addGroup)
 
 module.exports = router

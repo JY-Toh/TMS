@@ -30,7 +30,7 @@ exports.loginUser = catchAsyncErrors(async (req, res, next) => {
   sendToken(user, 200, res)
 })
 
-// Logout a user => /api/v1/logout
+// Logout a user => /api/v1/_logout
 exports.logout = catchAsyncErrors(async (req, res, next) => {
   res.cookie("token", null, {
     expires: new Date(Date.now()),
