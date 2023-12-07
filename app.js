@@ -16,7 +16,6 @@ process.on("uncaughtException", err => {
 
 //Setting up database connection
 const connection = require("./config/database")
-const ErrorHandler = require("./utils/errorHandler")
 
 //Setting up body parser
 app.use(express.json())

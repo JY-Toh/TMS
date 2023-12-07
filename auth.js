@@ -1,7 +1,6 @@
 // Check if the user is authenticated or not
 const jwt = require("jsonwebtoken")
 const connection = require("./config/database")
-const ErrorHandler = require("./utils/errorHandler")
 
 //Check if user account is valid
 exports.isAuthenticatedUser = async (req, res, next) => {
@@ -26,7 +25,6 @@ exports.isAuthenticatedUser = async (req, res, next) => {
       success: false,
       message: "Error: Token error"
     })
-    return next(new ErrorHandler("Token error"))
   }
   connection.query("SELECT * FROM user WHERE username = ?", [decoded.username], async (error, result) => {
     req.user = result[0]

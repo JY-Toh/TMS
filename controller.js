@@ -1,5 +1,4 @@
 const connection = require("./config/database")
-const ErrorResponse = require("./utils/errorHandler")
 const jwt = require("jsonwebtoken")
 const bcrypt = require("bcryptjs")
 
@@ -131,7 +130,6 @@ const sendToken = (user, statusCode, res) => {
       success: false,
       message: "Token error"
     })
-    // return next(new ErrorHandler("Token error"))
   }
 
   res
