@@ -3,6 +3,7 @@ const router = express.Router()
 
 const { loginUser, logout, registerUser, userProfile, viewUsers, updateProfile, addGroup, statusChange, updateUser, viewGroups } = require("./controller")
 const { isAuthenticatedUser, authorizeRoles, checkingGroup } = require("./auth")
+const {getApps} = require("./controller")
 
 //Routes for all users
 router.route("/login").post(loginUser)
@@ -11,6 +12,10 @@ router.route("/checkgroup").post(isAuthenticatedUser, checkingGroup)
 
 router.route("/profile").get(isAuthenticatedUser, userProfile)
 router.route("/profile/update").post(isAuthenticatedUser, updateProfile)
+
+//Routes for A2
+router.route("/getApps").get(isAuthenticatedUser,getApps)
+
 
 //Routes for users with admin rights
 router.route("/viewUsers").get(isAuthenticatedUser, authorizeRoles("admin"), viewUsers)
