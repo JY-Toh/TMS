@@ -10,7 +10,7 @@ exports.loginUser = async (req, res, next) => {
     if (username === "" || password === "") {
       res.status(400).json({
         success: false,
-        message: "Error: Please provide a username and password"
+        message: "Error: Invalid login credentials"
       })
     }
 
@@ -88,23 +88,24 @@ exports.registerUser = async (req, res, next) => {
           message: "Error: Password must be 8-10 characters long, contain at least one number, one letter and one special character"
         })
       }
-    }
-    const hashPassword = await bcrypt.hash(password, 10)
-    let result
-    try {
-      result = await connection.promise().execute("INSERT INTO user (username, password, email, grouplist, is_disabled) VALUES (?,?,?,?,?)", [username, hashPassword, email, grouplist, 0])
-    } catch (e) {
-      console.log(e)
-      res.status(400).json({
-        success: false,
-        message: "Error: Failed to create new user"
+    } else {
+      const hashPassword = await bcrypt.hash(password, 10)
+      let result
+      try {
+        result = await connection.promise().execute("INSERT INTO user (username, password, email, grouplist, is_disabled) VALUES (?,?,?,?,?)", [username, hashPassword, email, grouplist, 0])
+      } catch (e) {
+        console.log(e)
+        res.status(400).json({
+          success: false,
+          message: "Error: Failed to create new user"
+        })
+      }
+
+      res.status(200).json({
+        success: true,
+        message: "User created successfully"
       })
     }
-
-    res.status(200).json({
-      success: true,
-      message: "User created successfully"
-    })
   } catch (e) {
     console.log(e)
   }
@@ -309,10 +310,10 @@ exports.addGroup = async (req, res, next) => {
 exports.updateUser = async (req, res, next) => {
   try {
     const [row, fields] = await connection.promise().execute("SELECT * FROM user WHERE username = ?", [req.body.username])
-    let changedEmail = true
+    // let changedEmail = true
 
     let update = ""
-    if (req.body.email  &&  req.body.email != "") {
+    if (req.body.email && req.body.email != "") {
       const updateEmail = await connection.promise().execute("UPDATE user SET email = ? WHERE username = ?", [req.body.email, req.body.username])
       update += "Email successfully updated!\n"
     }
