@@ -436,6 +436,7 @@ exports.updateApp = async (req, res, next) => {
   try {
     const [rows, fields] = await connection.promise().query("SELECT * FROM application WHERE App_Acronym = ?", [App_Acronym])
     if (rows.length === 0) {
+      console.log(rows)
       res.status(404).json({
         success: false,
         message: "Error: Application does not exist"
@@ -445,41 +446,48 @@ exports.updateApp = async (req, res, next) => {
     let query = "UPDATE application SET "
     let values = []
     if (req.body.App_Description) {
-      query += "App_Description = ?,"
+      query += "App_Description = ?, "
       values.push(req.body.App_Description)
     }
     if (req.body.App_startDate) {
-      query += "App_startDate = ?,"
+      query += "App_startDate = ?, "
       values.push(req.body.App_startDate)
     }
     if (req.body.App_endDate) {
-      query += "App_endDate = ?,"
+      query += "App_endDate = ?, "
       values.push(req.body.App_endDate)
     }
     if (req.body.App_permit_Create) {
-      query += "App_permit_Create = ?,"
+      query += "App_permit_Create = ?, "
       values.push(req.body.App_permit_Create)
     }
     if (req.body.App_permit_Open) {
-      query += "App_permit_Open = ?,"
+      query += "App_permit_Open = ?, "
       values.push(req.body.App_permit_Open)
     }
     if (req.body.App_permit_toDoList) {
-      query += "App_permit_toDoList = ?,"
+      query += "App_permit_toDoList = ?, "
       values.push(req.body.App_permit_toDoList)
     }
     if (req.body.App_permit_Doing) {
-      query += "App_permit_Doing = ?,"
+      query += "App_permit_Doing = ?, "
       values.push(req.body.App_permit_Doing)
     }
     if (req.body.App_permit_Done) {
-      query += "App_permit_Done = ?,"
+      query += "App_permit_Done = ?, "
       values.push(req.body.App_permit_Done)
     }
 
-    query = query.slice(0, -2)
-    query += "WHERE App_Acronym = ?"
-    values.push(App_Acronym)
+    if (query === "UPDATE application SET ") {
+      res.status(400).json({
+        success: true,
+        message: "Nothing updated"
+      })
+    } else {
+      query = query.slice(0, -2)
+      query += " WHERE App_Acronym = ?"
+      values.push(App_Acronym)
+    }
 
     const response = await connection.promise().execute(query, values)
     if (response[0].affectedRows === 0) {
@@ -519,25 +527,26 @@ exports.getAppInfo = async (req, res, next) => {
   }
 }
 
+//Do we actually need this? BECAUSE when we view tasks is always after selecting an application first. I don't see why would we need to view all the tasks in the task table..
 //Get tasks => /getTasks
-exports.getTasks = async (req, res, next) => {
-  try {
-    const [rows, fields] = await connection.promise().query("SELECT * FROM task")
-    if (rows.length === 0) {
-      res.status(404).json({
-        success: false,
-        message: "Error: No tasks found"
-      })
-    }
+// exports.getTasks = async (req, res, next) => {
+//   try {
+//     const [rows, fields] = await connection.promise().query("SELECT * FROM task")
+//     if (rows.length === 0) {
+//       res.status(404).json({
+//         success: false,
+//         message: "Error: No tasks found"
+//       })
+//     }
 
-    res.status(200).json({
-      success: true,
-      data: rows
-    })
-  } catch (e) {
-    console.log(e)
-  }
-}
+//     res.status(200).json({
+//       success: true,
+//       data: rows
+//     })
+//   } catch (e) {
+//     console.log(e)
+//   }
+// }
 
 //Get tasks by application => /getTasksApp/:App_Acronym
 exports.getTasksApp = async (req, res, next) => {
@@ -571,11 +580,11 @@ exports.getTasksApp = async (req, res, next) => {
 
 //Create Task => /createTask
 exports.createTask = async (req, res, next) => {
-  let { Task_name, Task_description, Task_notes, Task_plan, Task_app_acronym } = req.body
+  let { Task_name, Task_description, Task_notes, Task_plan, Task_app_Acronym } = req.body
   let user = req.user.username
 
   try {
-    if (!Task_name || !Task_app_acronym) {
+    if (!Task_name || !Task_app_Acronym) {
       res.status(400).json({
         success: false,
         message: "Error: Invalid input"
@@ -591,8 +600,8 @@ exports.createTask = async (req, res, next) => {
     if (!Task_plan) {
       Task_plan = null
     }
-
-    const [rows, fields] = await connection.promise().query("SELECT * FROM application WHERE App_Acronym = ?", { Task_app_acronym })
+    console.log(Task_app_Acronym)
+    const [rows, fields] = await connection.promise().query("SELECT * FROM application WHERE App_Acronym = ?", [Task_app_Acronym])
     if (rows.length === 0) {
       res.status(404).json({
         success: false,
@@ -601,9 +610,9 @@ exports.createTask = async (req, res, next) => {
     }
 
     const application = rows[0]
-    const Task_id = Task_app_acronym + application.App_Rnumber
+    const Task_id = Task_app_Acronym + application.App_Rnumber
 
-    Task_app_acronym = application.App_Acronym
+    Task_app_Acronym = application.App_Acronym
     const Task_state = "Open"
     const Task_creator = user
     const Task_owner = user
@@ -611,7 +620,7 @@ exports.createTask = async (req, res, next) => {
     //@TODO make it use local timezone
     console.log(Task_createDate)
 
-    const response = await connection.promise().query("INSERT INTO task (Task_name, Task_description, Task_notes, Task_plan, Task_app_acronym, Task_state, Task_creator, Task_owner, Task_createDate) VALUES (?,?,?,?,?,?,?,?,?)", [Task_name, Task_description, Task_notes, Task_plan, Task_app_acronym, Task_state, Task_creator, Task_owner, Task_createDate])
+    const response = await connection.promise().query("INSERT INTO task (Task_name, Task_description, Task_notes, Task_id, Task_plan, Task_app_acronym, Task_state, Task_creator, Task_owner, Task_createDate) VALUES (?,?,?,?,?,?,?,?,?,?)", [Task_name, Task_description, Task_notes, Task_id, Task_plan, Task_app_Acronym, Task_state, Task_creator, Task_owner, Task_createDate])
     if (response[0].affectedRows === 0) {
       res.status(500).json({
         success: false,
@@ -620,7 +629,7 @@ exports.createTask = async (req, res, next) => {
     }
 
     const newApp_Rnumber = application.App_Rnumber + 1
-    const response2 = await connection.promise().query("UPDATE application SET App_Rnumber = ? WHERE App_Acronym = ?", [newApp_Rnumber, Task_app_acronym])
+    const response2 = await connection.promise().query("UPDATE application SET App_Rnumber = ? WHERE App_Acronym = ?", [newApp_Rnumber, Task_app_Acronym])
     if (response2.affectedRows === 0) {
       res.status(500).json({
         success: false,
@@ -658,6 +667,7 @@ exports.getTaskInfo = async (req, res, next) => {
   }
 }
 
+//Where is this updatenotes portion used for in the task workflow BECAUSE this is replacing the current notes with a new input of notes..
 //Update notes => /updateNotes/:Task_id
 exports.updateNotes = async (req, res, next) => {
   const Task_id = req.params.Task_id
@@ -670,7 +680,7 @@ exports.updateNotes = async (req, res, next) => {
       })
     }
 
-    const validate = await validatePermit(rows[0].Task_app_acronym, rows[0].Task_state, req.user.username)
+    const validate = await validatePermit(rows[0].Task_app_Acronym, rows[0].Task_state, req.user.username)
     if (!validate) {
       res.status(403).json({
         success: false,
@@ -705,10 +715,11 @@ const validatePermit = async (App_Acronym, Task_state, user) => {
   try {
     const [rows, fields] = await connection.promise().query("SELECT * FROM application WHERE App_Acronym = ?", [App_Acronym])
     if (rows.length === 0) {
-      res.status(404).json({
-        success: false,
-        message: "Error: Application does not exist"
-      })
+      // res.status(404).json({
+      //   success: false,
+      //   message: "Error: Application does not exist"
+      // })
+      console.log("Error: Application does not exist")
     }
 
     const application = rows[0]
@@ -727,10 +738,11 @@ const validatePermit = async (App_Acronym, Task_state, user) => {
         permit_state = application.App_permit_Done
         break
       default:
-        res.status(400).json({
-          success: false,
-          message: "Error: Invalid task state"
-        })
+        // res.status(400).json({
+        //   success: false,
+        //   message: "Error: Invalid task state"
+        // })
+        console.log("Error: Invalid task state")
     }
 
     if (permit_state === null || permit_state === undefined) {
@@ -740,13 +752,14 @@ const validatePermit = async (App_Acronym, Task_state, user) => {
     const permit_list = permit_state.split(",")
     const [rows2, fields2] = await connection.promise().query("SELECT * FROM user WHERE username = ?", [user])
     if (rows2.length === 0) {
-      res.status(404).json({
-        success: false,
-        message: "Error: User does not exist"
-      })
+      // res.status(404).json({
+      //   success: false,
+      //   message: "Error: User does not exist"
+      // })
+      console.log("Error: User does not exist")
     }
 
-    const user_groups = rows2.grouplist.split(",")
+    const user_groups = rows2[0].grouplist.slice(1, -1).split(",")
     authorised = false
     for (let i = 0; i < user_groups.length; i++) {
       if (permit_list.includes(user_groups[i])) {
@@ -776,7 +789,7 @@ exports.promoteTask = async (req, res, next) => {
       })
     }
 
-    const validate = await validatePermit(rows[0].Task_app_acronym, rows[0].Task_state, req.user.username)
+    const validate = await validatePermit(rows[0].Task_app_Acronym, rows[0].Task_state, req.user.username)
     if (!validate) {
       res.status(403).json({
         success: false,
@@ -846,7 +859,7 @@ exports.rejectTask = async (req, res, next) => {
       })
     }
 
-    const validate = await validatePermit(rows[0].Task_app_acronym, rows[0].Task_state, req.user.username)
+    const validate = await validatePermit(rows[0].Task_app_Acronym, rows[0].Task_state, req.user.username)
     if (!validate) {
       res.status(403).json({
         success: false,
@@ -908,7 +921,7 @@ exports.returnTask = async (req, res, next) => {
       })
     }
 
-    const validate = await validatePermit(rows[0].Task_app_acronym, rows[0].Task_state, req.user.username)
+    const validate = await validatePermit(rows[0].Task_app_Acronym, rows[0].Task_state, req.user.username)
     if (!validate) {
       res.status(403).json({
         success: false,
@@ -984,208 +997,217 @@ exports.getPlan = async (req, res, next) => {
 }
 
 //Get Plan by app => /getPlanApp/:App_Acronym
-exports.getPlanApp = async(req,res,next)=>{
+exports.getPlanApp = async (req, res, next) => {
   const App_Acronym = req.params.App_Acronym
-  try{
-    const[rows,fields]=await connnection.promise().query("SELECT * FROM application WHERE App_Acronym = ?", {App_Acronym})
-    if(rows.length===0){
+  try {
+    const [rows, fields] = await connection.promise().query("SELECT * FROM application WHERE App_Acronym = ?", [App_Acronym])
+    if (rows.length === 0) {
       res.status(404).json({
-        success:false,
-        message:"Error: Application does not exist"
+        success: false,
+        message: "Error: Application does not exist"
       })
     }
 
     const application = rows[0]
-    const[rows2,fields2]=await connection.promise().query("SELECT * FROM plan WHERE Plan_app_Acronym = ?",[App_Acronym])
-    if(rows2.length === 0 ){
+    const [rows2, fields2] = await connection.promise().query("SELECT * FROM plan WHERE Plan_app_Acronym = ?", [App_Acronym])
+    if (rows2.length === 0) {
       res.status(404).json({
-        success:false,
-        message:"Error: No plans found"
+        success: false,
+        message: "Error: No plans found"
       })
     }
 
     res.status(200).json({
-      success:true,
-      data:rows2
+      success: true,
+      data: rows2
     })
-  }catch(e){
+  } catch (e) {
     console.log(e)
   }
 }
 
 //Create plan => /createPlan
-exports.createPlan = async(req,res,next)=>{
-  const {Plan_app_Acronym,Plan_MVP_name}=req.body
-  try{
-    const[rows,fields]=await connection.promise().query("SELECT * FROM plan WHERE Plan_app_Acronym = ? AND Plan_MVP_name = ?",[Plan_app_Acronym,Plan_MVP_name])
-    if(rows.length!==0){
+exports.createPlan = async (req, res, next) => {
+  const { Plan_app_Acronym, Plan_MVP_name } = req.body
+  try {
+    const [rows, fields] = await connection.promise().query("SELECT * FROM plan WHERE Plan_app_Acronym = ? AND Plan_MVP_name = ?", [Plan_app_Acronym, Plan_MVP_name])
+    if (rows.length !== 0) {
       res.status(400).json({
-        success:false,
-        message:"Error: Plan already exist"
+        success: false,
+        message: "Error: Plan already exist"
       })
     }
 
     const application = rows[0]
-    const[rows2,fields2]=await connection.promise().query("SELECT * FROM plan WHERE Plan_app_Acronym = ?",[Plan_app_Acronym])
-    if(rows2.length===0){
+    const [rows2, fields2] = await connection.promise().query("SELECT * FROM application WHERE App_Acronym = ?", [Plan_app_Acronym])
+    if (rows2.length === 0) {
       res.status(404).json({
-        success:false,
-        message:"Error: Application does not exist"
+        success: false,
+        message: "Error: Application does not exist"
       })
     }
 
-    if(!Plan_app_Acronym || !Plan_MVP_name){
+    if (!Plan_app_Acronym || !Plan_MVP_name) {
       res.status(400).json({
-        success:false,
-        message:"Error: Invalid input"
+        success: false,
+        message: "Error: Invalid input"
       })
     }
 
-    let{Plan_startDate,Plan_endDate, Plan_color}=req.body
-    if(!Plan_startDate){
-      Plan_startDate=null
+    let { Plan_startDate, Plan_endDate, Plan_color } = req.body
+    if (!Plan_startDate) {
+      Plan_startDate = null
     }
-    if(!Plan_endDate){
-      Plan_endDate=null
+    if (!Plan_endDate) {
+      Plan_endDate = null
     }
-    if(!Plan_color){
-      Plan_color=getRandomColor()
+    if (!Plan_color) {
+      Plan_color = getRandomColor()
     }
 
-    const response=await connection.promise().query("INSERT INTO plan (Plan_app_Acronym, Plan_MVP_name, Plan_startDate, Plan_endDate, Plan_color) VALUES (?,?,?,?,?),"[Plan_app_Acronym,Plan_MVP_name,Plan_startDate,Plan_endDate,Plan_color])
-    if(response[0].affectedRows===0){
+    const response = await connection.promise().query("INSERT INTO plan (Plan_app_Acronym, Plan_MVP_name, Plan_startDate, Plan_endDate, Plan_color) VALUES (?,?,?,?,?)", [Plan_app_Acronym, Plan_MVP_name, Plan_startDate, Plan_endDate, Plan_color])
+    if (response[0].affectedRows === 0) {
       res.status(500).json({
-        success:false,
-        message:"Error: Failed to create plan"
+        success: false,
+        message: "Error: Failed to create plan"
       })
     }
 
     res.status(200).json({
-      success:true,
-      message:"Plan created successfully"
+      success: true,
+      message: "Plan created successfully"
     })
-  }catch(e){
+  } catch (e) {
     console.log(e)
   }
 }
 
 //Update plan => /updatePlan
-exports.updatePlan = async(req,res,next)=>{
-  const{Plan_app_Acronym,Plan_MVP_name}=req.body
-  try{
-    const[rows,fields]=await connection.promise().query("SELECT * FROM plan WHERE Plan_app_Acronym = ? AND Plan_MVP_name = ?",[Plan_app_Acronym,Plan_MVP_name])
-    if(rows.length===0){
+exports.updatePlan = async (req, res, next) => {
+  const { Plan_app_Acronym, Plan_MVP_name } = req.body
+  try {
+    const [rows, fields] = await connection.promise().query("SELECT * FROM plan WHERE Plan_app_Acronym = ? AND Plan_MVP_name = ?", [Plan_app_Acronym, Plan_MVP_name])
+    if (rows.length === 0) {
       res.status(404).json({
-        success:false,
-        message:"Error: Plan does not exist"
+        success: false,
+        message: "Error: Plan does not exist"
       })
     }
 
-    const[rows2,fields2]=await connection.promise().query("SELECT * FROM application WHERE App_Acronym = ?",[Plan_app_Acronym])
-    if(rows2.length===0){
+    const [rows2, fields2] = await connection.promise().query("SELECT * FROM application WHERE App_Acronym = ?", [Plan_app_Acronym])
+    if (rows2.length === 0) {
       res.status(404).json({
-        success:false,
-        message:"Error: Application does not exist"
+        success: false,
+        message: "Error: Application does not exist"
       })
     }
 
-    if(!Plan_app_Acronym||!Plan_MVP_name){
+    if (!Plan_app_Acronym || !Plan_MVP_name) {
       res.status(400).json({
-        success:false,
-        message:"Error: Invalid input"
+        success: false,
+        message: "Error: Invalid input"
       })
     }
 
-    let query="UPDATE plan SET "
+    let query = "UPDATE plan SET "
     let params = []
-    if(req.body.Plan_startDate){
-      query+="Plan_startDate = ?,"
+    if (req.body.Plan_startDate) {
+      query += "Plan_startDate = ?, "
       params.push(req.body.Plan_startDate)
     }
-    if(req.body.Plan_endDate){
-      query+="Plan_endDate = ?,"
+    if (req.body.Plan_endDate) {
+      query += "Plan_endDate = ?, "
       params.push(req.body.Plan_endDate)
     }
-    query = query.slice(0,1)
-    query += " WHERE Plan_app_Acronym = ? AND Plan_MVP_name = ?"
-    params.push(Plan_app_Acronym)
-    params.push(Plan_MVP_name)
+
+    if (query === "UPDATE plan SET ") {
+      console.log(query)
+      res.status(200).json({
+        success: true,
+        message: "Nothing updated"
+      })
+    } else {
+      query = query.slice(0, -2)
+      query += " WHERE Plan_app_Acronym = ? AND Plan_MVP_name = ?"
+      params.push(Plan_app_Acronym)
+      params.push(Plan_MVP_name)
+    }
 
     const response = await connection.promise().execute(query, params)
-    if(response[0].affectedRows===0){
+    if (response[0].affectedRows === 0) {
       res.status(500).json({
-        success:false,
-        message:"Error: Failed to update plan"
+        success: false,
+        message: "Error: Failed to update plan"
       })
     }
 
     res.status(200).json({
-      success:true,
-      message:"Plan updated successfully"
+      success: true,
+      message: "Plan updated successfully"
     })
-  }catch(e){
+  } catch (e) {
     console.log(e)
   }
 }
 
 //Assign Task to plan => /assignTaskPlan/:Task_id
-exports.assignTaskPlan = async(req,res,next)=>{
-  const{Plan_app_Acronym,Plan_MVP_name}=req.body
+exports.assignTaskPlan = async (req, res, next) => {
+  const { Plan_app_Acronym, Plan_MVP_name } = req.body
   const Task_id = req.params.Task_id
-  try{
-    const[rows,fields]=await connection.promise().query("SELECT * FROM plan WHERE Plan_app_Acronym = ? AND Plan_MVP_name = ?",[Plan_app_Acronym,Plan_MVP_name])
-    if(rows.length===0){
+  try {
+    const [rows, fields] = await connection.promise().query("SELECT * FROM plan WHERE Plan_app_Acronym = ? AND Plan_MVP_name = ?", [Plan_app_Acronym, Plan_MVP_name])
+    if (rows.length === 0) {
       res.status(404).json({
-        success:false,
-        message:"Error: Plan does not exist"
+        success: false,
+        message: "Error: Plan does not exist"
       })
     }
 
-    const [rows2,fields2]=await connection.promise().query("SELECT * FROM task WHERE Task_id = ?",[Task_id])
-    if(rows2.length===0){
+    const [rows2, fields2] = await connection.promise().query("SELECT * FROM task WHERE Task_id = ?", [Task_id])
+    if (rows2.length === 0) {
       res.status(404).json({
-        success:false,
-        message:"Error: Task does not exist"
+        success: false,
+        message: "Error: Task does not exist"
       })
     }
 
-    const[rows3,fields3]=await connection.promise().query("SELECT * FROM application WHERE App_Acronym = ?",[App_Acronym])
-    if(rows3.length===0){
+    const [rows3, fields3] = await connection.promise().query("SELECT * FROM application WHERE App_Acronym = ?", [Plan_app_Acronym])
+    if (rows3.length === 0) {
       res.status(404).json({
-        success:false,
-        message:"Error: Application does not exist"
+        success: false,
+        message: "Error: Application does not exist"
       })
     }
 
-    if(!Plan_app_Acronym||!Plan_MVP_name){
+    if (!Plan_app_Acronym || !Plan_MVP_name) {
       res.status(400).json({
-        success:false,
-        message:"Error: Invalid input"
+        success: false,
+        message: "Error: Invalid input"
       })
     }
 
     const Task_owner = req.user.username
     let Added_Task_notes
-    if(req.body.Task_notes === undefined || null){
+    if (req.body.Task_notes === undefined || null) {
       Added_Task_notes = Task_owner + " assigned " + rows2.Task_name + " to " + Plan_MVP_name
     } else {
       Added_Task_notes = req.body.Task_notes + "\n" + Task_owner + " assigned " + rows2[0].Task_name + " to " + Plan_MVP_name
     }
 
     const Task_notes = Added_Task_notes + "\n" + rows2[0].Task_notes
-    const response = await connection.promise().execute("UPDATE task SET Task_notes = ?, Task_plan = ?, Task_owner = ? WHERE Task_id =?",[Task_notes,Plan_MVP_name,Task_owner,Task_id])
-    if(response[0].affectedRows===0){
+    const response = await connection.promise().execute("UPDATE task SET Task_notes = ?, Task_plan = ?, Task_owner = ? WHERE Task_id =?", [Task_notes, Plan_MVP_name, Task_owner, Task_id])
+    if (response[0].affectedRows === 0) {
       res.status(500).json({
-        success:false,
-        message:"Error: Failed to assign plan to task"
+        success: false,
+        message: "Error: Failed to assign plan to task"
       })
     }
 
     res.status(200).json({
-      success:true,
-      message:"Plan assigned to task successfully"
+      success: true,
+      message: "Plan assigned to task successfully"
     })
-  } catch(e){
+  } catch (e) {
     console.log(e)
   }
 }
