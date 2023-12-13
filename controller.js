@@ -571,7 +571,7 @@ exports.getTasksApp = async (req, res, next) => {
 
     res.status(200).json({
       success: true,
-      message: rows2
+      data: rows2
     })
   } catch (e) {
     console.log(e)
@@ -582,18 +582,19 @@ exports.getTasksApp = async (req, res, next) => {
 exports.createTask = async (req, res, next) => {
   let { Task_name, Task_description, Task_notes, Task_plan, Task_app_Acronym } = req.body
   let user = req.user.username
+  console.log("I am here")
 
   try {
-    if (!Task_name || !Task_app_Acronym) {
+    if (!Task_name || !Task_app_Acronym || !Task_description) {
       res.status(400).json({
         success: false,
         message: "Error: Invalid input"
       })
     }
 
-    if (!Task_description) {
-      Task_description = null
-    }
+    // if (!Task_description) {
+    //   Task_description = null
+    // }
     if (!Task_notes) {
       Task_notes = null
     }
