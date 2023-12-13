@@ -360,7 +360,7 @@ exports.getApps = async (req, res, next) => {
 
 //Create app => /createApp
 exports.createApp = async (req, res, next) => {
-  let { App_Acronym, App_Description, App_Rnumber, App_startDate, App_endDate, App_permit_Create, App_permit_Open, App_permit_toDoList, App_permit_Doing, App_permit_Done } = req.body
+  let { App_Acronym, App_Description, App_Rnumber, App_startDate, App_endDate, App_permit_create, App_permit_Open, App_permit_toDoList, App_permit_Doing, App_permit_Done } = req.body
 
   try {
     if (!App_Acronym || !App_Description || !App_Rnumber) {
@@ -393,8 +393,8 @@ exports.createApp = async (req, res, next) => {
       App_endDate = null
     }
 
-    if (!App_permit_Create) {
-      App_permit_Create = null
+    if (!App_permit_create) {
+      App_permit_create = null
     }
 
     if (!App_permit_Open) {
@@ -413,7 +413,7 @@ exports.createApp = async (req, res, next) => {
       App_permit_Done = null
     }
 
-    const response = await connection.promise().query("INSERT INTO application (App_Acronym, App_Description, App_Rnumber, App_startDate, App_endDate, App_permit_Create, App_permit_Open, App_permit_toDoList, App_permit_Doing, App_permit_Done) VALUES (?,?,?,?,?,?,?,?,?,?)", [App_Acronym, App_Description, App_Rnumber, App_startDate, App_endDate, App_permit_Create, App_permit_Open, App_permit_toDoList, App_permit_Doing, App_permit_Done])
+    const response = await connection.promise().query("INSERT INTO application (App_Acronym, App_Description, App_Rnumber, App_startDate, App_endDate, App_permit_create, App_permit_Open, App_permit_toDoList, App_permit_Doing, App_permit_Done) VALUES (?,?,?,?,?,?,?,?,?,?)", [App_Acronym, App_Description, App_Rnumber, App_startDate, App_endDate, App_permit_create, App_permit_Open, App_permit_toDoList, App_permit_Doing, App_permit_Done])
     if (response[0].affectedRows === 0) {
       res.status(500).json({
         success: false,
@@ -457,9 +457,9 @@ exports.updateApp = async (req, res, next) => {
       query += "App_endDate = ?, "
       values.push(req.body.App_endDate)
     }
-    if (req.body.App_permit_Create) {
-      query += "App_permit_Create = ?, "
-      values.push(req.body.App_permit_Create)
+    if (req.body.App_permit_create) {
+      query += "App_permit_create = ?, "
+      values.push(req.body.App_permit_create)
     }
     if (req.body.App_permit_Open) {
       query += "App_permit_Open = ?, "
@@ -965,15 +965,15 @@ exports.returnTask = async (req, res, next) => {
 }
 
 //Generate random color hex code
-const getRandomColor = () => {
-  const letters = "0123456789ABCDEF"
-  let color = "#"
-  for (let i = 0; i < 6; i++) {
-    color += letters[Math.floor(Math.random() * 16)]
-  }
+// const getRandomColor = () => {
+//   const letters = "0123456789ABCDEF"
+//   let color = "#"
+//   for (let i = 0; i < 6; i++) {
+//     color += letters[Math.floor(Math.random() * 16)]
+//   }
 
-  return color
-}
+//   return color
+// }
 
 //Get plan => /getPlan
 exports.getPlan = async (req, res, next) => {
@@ -1061,9 +1061,9 @@ exports.createPlan = async (req, res, next) => {
     if (!Plan_endDate) {
       Plan_endDate = null
     }
-    if (!Plan_color) {
-      Plan_color = getRandomColor()
-    }
+    // if (!Plan_color) {
+    //   Plan_color = getRandomColor()
+    // }
 
     const response = await connection.promise().query("INSERT INTO plan (Plan_app_Acronym, Plan_MVP_name, Plan_startDate, Plan_endDate, Plan_color) VALUES (?,?,?,?,?)", [Plan_app_Acronym, Plan_MVP_name, Plan_startDate, Plan_endDate, Plan_color])
     if (response[0].affectedRows === 0) {
