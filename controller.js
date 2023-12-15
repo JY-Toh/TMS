@@ -530,27 +530,6 @@ exports.getAppInfo = async (req, res, next) => {
   }
 }
 
-//Do we actually need this? BECAUSE when we view tasks is always after selecting an application first. I don't see why would we need to view all the tasks in the task table..
-//Get tasks => /getTasks
-// exports.getTasks = async (req, res, next) => {
-//   try {
-//     const [rows, fields] = await connection.promise().query("SELECT * FROM task")
-//     if (rows.length === 0) {
-//       res.status(404).json({
-//         success: false,
-//         message: "Error: No tasks found"
-//       })
-//     }
-
-//     res.status(200).json({
-//       success: true,
-//       data: rows
-//     })
-//   } catch (e) {
-//     console.log(e)
-//   }
-// }
-
 //Get tasks by application => /getTasksApp/:App_Acronym
 exports.getTasksApp = async (req, res, next) => {
   const App_Acronym = req.params.App_Acronym
@@ -588,19 +567,12 @@ exports.createTask = async (req, res, next) => {
   console.log("I am here")
 
   try {
-    if (!Task_name || !Task_app_Acronym || !Task_description) {
+    if (!Task_name || !Task_app_Acronym) {
       res.status(400).json({
         success: false,
         message: "Error: Invalid input"
       })
     }
-
-    // if (!Task_description) {
-    //   Task_description = null
-    // }
-    // if (!Task_notes) {
-    //   Task_notes = null
-    // }
     if (!Task_plan) {
       Task_plan = null
     }
@@ -625,7 +597,7 @@ exports.createTask = async (req, res, next) => {
     console.log(Task_createDate)
 
     if (!Task_notes) {
-      Task_notes = Task_owner + " created " + Task_name + " on the " + Task_createDate
+      Task_notes = Task_owner + " created " + Task_name + " on the " + Task_createDate + "\n"
     }
 
     const response = await connection.promise().query("INSERT INTO task (Task_name, Task_description, Task_notes, Task_id, Task_plan, Task_app_acronym, Task_state, Task_creator, Task_owner, Task_createDate) VALUES (?,?,?,?,?,?,?,?,?,?)", [Task_name, Task_description, Task_notes, Task_id, Task_plan, Task_app_Acronym, Task_state, Task_creator, Task_owner, Task_createDate])
@@ -641,7 +613,7 @@ exports.createTask = async (req, res, next) => {
     if (response2.affectedRows === 0) {
       res.status(500).json({
         success: false,
-        message: "Error: Something went wrong so GOODLUCK NIGGA"
+        message: "Error: Incremental er404"
       })
     }
 
@@ -694,28 +666,30 @@ exports.updateNotes = async (req, res, next) => {
         message: "Error: Not authorised"
       })
     }
-    // if (!req.body.Task_notes) {
-    //   res.status(200).json({
-    //     success: false,
-    //     message: "No notes added"
-    //   })
-    // }
-    // console.log(rows[0].Task_notes)
-    const dateNow = new Date().toISOString().slice(0, 19).replace("T", " ")
-    const addedNotes = "\n" + req.body.Task_notes + "\n" + rows[0].Task_owner + " added on " + dateNow + "\n" + rows[0].Task_notes + "\n"
 
-    const response = await connection.promise().query("UPDATE task SET Task_notes = ? WHERE Task_id = ?", [addedNotes, Task_id])
-    if (response[0].affectedRows === 0) {
-      res.status(500).json({
-        success: false,
-        message: "Error: Failed to update notes"
+    let addedNotes
+    if (!req.body.Task_notes) {
+      res.status(200).json({
+        success: true,
+        message: "Nothing added"
+      })
+    } else {
+      const dateNow = new Date().toISOString().slice(0, 19).replace("T", " ")
+      addedNotes = req.body.Task_notes + "\n" + rows[0].Task_owner + " added on " + dateNow + "\n" + rows[0].Task_notes + "\n"
+
+      const response = await connection.promise().query("UPDATE task SET Task_notes = ? WHERE Task_id = ?", [addedNotes, Task_id])
+      if (response[0].affectedRows === 0) {
+        res.status(500).json({
+          success: false,
+          message: "Error: Failed to update notes"
+        })
+      }
+
+      res.status(200).json({
+        success: true,
+        message: "Notes updated successfully"
       })
     }
-
-    res.status(200).json({
-      success: true,
-      message: "Notes updated successfully"
-    })
   } catch (e) {
     console.log(e)
   }
@@ -797,7 +771,6 @@ exports.promoteTask = async (req, res, next) => {
         success: false,
         message: "Error: Task does not exist"
       })
-      // return
     }
 
     const validate = await validatePermit(rows[0].Task_app_Acronym, rows[0].Task_state, req.user.username)
@@ -837,7 +810,9 @@ exports.promoteTask = async (req, res, next) => {
     const Task_owner = req.user.username
     let Added_Task_notes
     if (req.body.Task_notes === undefined || null) {
-      Added_Task_notes = "\n" + Task_owner + " moved " + rows[0].Task_name + " from " + Task_state + " to " + nextState
+      Added_Task_notes = Task_owner + " moved " + rows[0].Task_name + " from " + Task_state + " to " + nextState + "\n"
+    } else {
+      Added_Task_notes = req.body.Task_notes + "\n" + Task_owner + " moved " + rows[0].Task_name + " from " + Task_state + " to " + nextState + "\n"
     }
 
     const Task_notes = Added_Task_notes + "\n" + rows[0].Task_notes
@@ -862,7 +837,6 @@ exports.promoteTask = async (req, res, next) => {
 }
 
 async function sendEmail(taskName, taskOwner, Task_app_Acronym) {
-  // try {
   const [rows, fields] = await connection.promise().query("SELECT * FROM application WHERE App_Acronym = ?", [Task_app_Acronym])
   const group = rows[0].App_permit_Done
 
@@ -871,23 +845,14 @@ async function sendEmail(taskName, taskOwner, Task_app_Acronym) {
   let emails = []
   for (let i = 0; i < users.length; i++) {
     const user = users[i]
-    // console.log(users[i])
-    // console.log(user)
-    // console.log(user.grouplist.slice(1, -1).split(","))
-    // console.log(user.grouplist)
     const user_groups = user.grouplist.slice(1, -1).split(",")
-    // console.log(user_groups + "<->" + group)
     if (user_groups.includes(group)) {
       if (user.email !== null && user.email !== undefined) {
-        // console.log(user + "<_>" + user.email)
         emails.push(user.email)
         console.log(emails)
       }
     }
   }
-  // } catch (e) {
-  //   console.log(e)
-  // }
 
   const transport = nodemailer.createTransport({
     host: "sandbox.smtp.mailtrap.io",
@@ -900,7 +865,7 @@ async function sendEmail(taskName, taskOwner, Task_app_Acronym) {
 
   const mailOptions = {
     from: `${process.env.SMTP_FROM_NAME} <${process.env.SMTP_FROM_EMAIL}>`,
-    to: emails, //Replace with the actual Project Lead's email
+    to: emails,
     subject: `Task promotion`,
     text: `${taskName} has been promoted to "Done" by ${taskOwner}.`
   }
@@ -945,12 +910,12 @@ exports.rejectTask = async (req, res, next) => {
     const Task_owner = req.user.username
     let Added_Task_notes
     if (req.body.Task_notes === undefined || null) {
-      Added_Task_notes = "\n" + Task_owner + " moved " + rows[0].Task_name + " from " + Task_state + " to " + nextState
+      Added_Task_notes = Task_owner + " moved " + rows[0].Task_name + " from " + Task_state + " to " + nextState + "\n"
     } else {
-      Added_Task_notes = req.body.Task_notes + "\n" + Task_owner + " moved " + rows[0].Task_name + " from " + Task_state + " to " + nextState
+      Added_Task_notes = req.body.Task_notes + "\n" + Task_owner + " moved " + rows[0].Task_name + " from " + Task_state + " to " + nextState + "\n"
     }
 
-    const Task_notes = Added_Task_notes + "\n" + rows[0].Task_notes
+    const Task_notes = Added_Task_notes + rows[0].Task_notes
     let Task_plan
     if (req.body.Task_plan === undefined || JSON.stringify(req.body.Task_plan === "{}") || "") {
       Task_plan = null
@@ -1011,12 +976,12 @@ exports.returnTask = async (req, res, next) => {
     const Task_owner = req.user.username
     let Added_Task_notes
     if (req.body.Task_notes === undefined || null) {
-      Added_Task_notes = "\n" + Task_owner + " moved " + rows[0].Task_name + " from " + Task_state + " to " + nextState
+      Added_Task_notes = Task_owner + " moved " + rows[0].Task_name + " from " + Task_state + " to " + nextState + "\n"
     } else {
-      Added_Task_notes = req.body.Task_notes + "\n" + Task_owner + " moved " + rows[0].Task_name + " from " + Task_state + " to " + nextState
+      Added_Task_notes = req.body.Task_notes + "\n" + Task_owner + " moved " + rows[0].Task_name + " from " + Task_state + " to " + nextState + "\n"
     }
 
-    const Task_notes = Added_Task_notes + "\n" + rows[0].Task_notes
+    const Task_notes = Added_Task_notes + rows[0].Task_notes
     const response = await connection.promise().execute("UPDATE task SET Task_notes = ?, Task_state = ?, Task_owner = ? WHERE Task_id = ?", [Task_notes, nextState, Task_owner, Task_id])
     if (response[0].affectedRows === 0) {
       res.status(500).json({
@@ -1033,17 +998,6 @@ exports.returnTask = async (req, res, next) => {
     console.log(e)
   }
 }
-
-//Generate random color hex code
-// const getRandomColor = () => {
-//   const letters = "0123456789ABCDEF"
-//   let color = "#"
-//   for (let i = 0; i < 6; i++) {
-//     color += letters[Math.floor(Math.random() * 16)]
-//   }
-
-//   return color
-// }
 
 //Get plan => /getPlan
 exports.getPlan = async (req, res, next) => {
@@ -1108,7 +1062,6 @@ exports.createPlan = async (req, res, next) => {
       })
     }
 
-    const application = rows[0]
     const [rows2, fields2] = await connection.promise().query("SELECT * FROM application WHERE App_Acronym = ?", [Plan_app_Acronym])
     if (rows2.length === 0) {
       res.status(404).json({
@@ -1131,9 +1084,6 @@ exports.createPlan = async (req, res, next) => {
     if (!Plan_endDate) {
       Plan_endDate = null
     }
-    // if (!Plan_color) {
-    //   Plan_color = getRandomColor()
-    // }
 
     const response = await connection.promise().query("INSERT INTO plan (Plan_app_Acronym, Plan_MVP_name, Plan_startDate, Plan_endDate, Plan_color) VALUES (?,?,?,?,?)", [Plan_app_Acronym, Plan_MVP_name, Plan_startDate, Plan_endDate, Plan_color])
     if (response[0].affectedRows === 0) {
@@ -1259,12 +1209,12 @@ exports.assignTaskPlan = async (req, res, next) => {
     const Task_owner = req.user.username
     let Added_Task_notes
     if (req.body.Task_notes === undefined || null) {
-      Added_Task_notes = Task_owner + " assigned " + rows2.Task_name + " to " + Plan_MVP_name
+      Added_Task_notes = Task_owner + " assigned " + rows2.Task_name + " to " + Plan_MVP_name + "\n"
     } else {
-      Added_Task_notes = req.body.Task_notes + "\n" + Task_owner + " assigned " + rows2[0].Task_name + " to " + Plan_MVP_name
+      Added_Task_notes = req.body.Task_notes + "\n" + Task_owner + " assigned " + rows2[0].Task_name + " to " + Plan_MVP_name + "\n"
     }
 
-    const Task_notes = Added_Task_notes + "\n" + rows2[0].Task_notes
+    const Task_notes = Added_Task_notes + rows2[0].Task_notes
     const response = await connection.promise().execute("UPDATE task SET Task_notes = ?, Task_plan = ?, Task_owner = ? WHERE Task_id =?", [Task_notes, Plan_MVP_name, Task_owner, Task_id])
     if (response[0].affectedRows === 0) {
       res.status(500).json({
