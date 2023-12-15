@@ -2,6 +2,7 @@ const connection = require("./config/database")
 const jwt = require("jsonwebtoken")
 const bcrypt = require("bcryptjs")
 const { authorizeRoles } = require("./auth")
+const nodemailer = require("nodemailer")
 
 // Login a user => /login
 exports.loginUser = async (req, res, next) => {
@@ -64,6 +65,7 @@ exports.logout = async (req, res, next) => {
 // Create a user => /register
 exports.registerUser = async (req, res, next) => {
   try {
+    console.log("I am here in first line of /register")
     let { username, email, password, grouplist } = req.body
 
     if (!req.body.email) {
@@ -84,28 +86,29 @@ exports.registerUser = async (req, res, next) => {
     if (password) {
       const passwordRegex = /^(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,10}$/
       if (!passwordRegex.test(password)) {
-        res.status(400).json({
+        res.status(404).json({
           success: false,
           message: "Error: Password must be 8-10 characters long, contain at least one number, one letter and one special character"
         })
-      }
-    } else {
-      const hashPassword = await bcrypt.hash(password, 10)
-      let result
-      try {
-        result = await connection.promise().execute("INSERT INTO user (username, password, email, grouplist, is_disabled) VALUES (?,?,?,?,?)", [username, hashPassword, email, grouplist, 0])
-      } catch (e) {
-        console.log(e)
-        res.status(400).json({
-          success: false,
-          message: "Error: Failed to create new user"
+      } else {
+        const hashPassword = await bcrypt.hash(password, 10)
+        let result
+        try {
+          console.log(username + hashPassword + email + grouplist)
+          result = await connection.promise().execute("INSERT INTO user (username, password, email, grouplist, is_disabled) VALUES (?,?,?,?,?)", [username, hashPassword, email, grouplist, 0])
+        } catch (e) {
+          console.log(e)
+          res.status(404).json({
+            success: false,
+            message: "Error: Failed to create new user"
+          })
+        }
+
+        res.status(200).json({
+          success: true,
+          message: "User created successfully"
         })
       }
-
-      res.status(200).json({
-        success: true,
-        message: "User created successfully"
-      })
     }
   } catch (e) {
     console.log(e)
@@ -128,7 +131,7 @@ const sendToken = (user, statusCode, res) => {
     decoded = jwt.verify(token, process.env.JWT_SECRET)
   } catch (e) {
     console.log(e)
-    res.status(400).json({
+    res.status(403).json({
       success: false,
       message: "Token error"
     })
@@ -186,7 +189,7 @@ exports.updateProfile = async (req, res, next) => {
     if (req.body.password) {
       const passwordRegex = /^(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,10}$/
       if (!passwordRegex.test(req.body.password)) {
-        res.status(400).json({
+        res.status(404).json({
           success: false,
           message: "Error: Password must be 8-10 characters long, contain at least one number, one letter and one special character"
         })
@@ -249,7 +252,7 @@ exports.statusChange = async (req, res, next) => {
       results = await connection.promise().execute("UPDATE user SET is_disabled = ? WHERE username = ?", [is_disabled, username])
       if (results[0].affectedRows === 0) {
         console.log(results[0])
-        res.status(400).json({
+        res.status(404).json({
           success: false,
           message: "Error: No changes made"
         })
@@ -257,7 +260,7 @@ exports.statusChange = async (req, res, next) => {
       }
     } catch (e) {
       console.log(e)
-      res.status(400).json({
+      res.status(404).json({
         success: false,
         message: "Error: Changing status"
       })
@@ -561,7 +564,7 @@ exports.getTasksApp = async (req, res, next) => {
     }
 
     const application = rows[0]
-    const [rows2, fields2] = await connection.promise().query("SELECT * FROM task WHERE Task_app_acronym = ?", [App_Acronym])
+    const [rows2, fields2] = await connection.promise().query("SELECT * FROM task LEFT JOIN plan on `Task_plan` = `Plan_MVP_name` AND `Task_app_Acronym` = `Plan_app_Acronym` WHERE Task_app_Acronym = ?", [App_Acronym])
     if (rows2.length === 0) {
       res.status(404).json({
         success: false,
@@ -595,9 +598,9 @@ exports.createTask = async (req, res, next) => {
     // if (!Task_description) {
     //   Task_description = null
     // }
-    if (!Task_notes) {
-      Task_notes = null
-    }
+    // if (!Task_notes) {
+    //   Task_notes = null
+    // }
     if (!Task_plan) {
       Task_plan = null
     }
@@ -620,6 +623,10 @@ exports.createTask = async (req, res, next) => {
     const Task_createDate = new Date().toISOString().slice(0, 19).replace("T", " ")
     //@TODO make it use local timezone
     console.log(Task_createDate)
+
+    if (!Task_notes) {
+      Task_notes = Task_owner + " created " + Task_name + " on the " + Task_createDate
+    }
 
     const response = await connection.promise().query("INSERT INTO task (Task_name, Task_description, Task_notes, Task_id, Task_plan, Task_app_acronym, Task_state, Task_creator, Task_owner, Task_createDate) VALUES (?,?,?,?,?,?,?,?,?,?)", [Task_name, Task_description, Task_notes, Task_id, Task_plan, Task_app_Acronym, Task_state, Task_creator, Task_owner, Task_createDate])
     if (response[0].affectedRows === 0) {
@@ -668,7 +675,6 @@ exports.getTaskInfo = async (req, res, next) => {
   }
 }
 
-//Where is this updatenotes portion used for in the task workflow BECAUSE this is replacing the current notes with a new input of notes..
 //Update notes => /updateNotes/:Task_id
 exports.updateNotes = async (req, res, next) => {
   const Task_id = req.params.Task_id
@@ -688,14 +694,17 @@ exports.updateNotes = async (req, res, next) => {
         message: "Error: Not authorised"
       })
     }
-    if (!req.body.Task_notes) {
-      res.status(400).json({
-        success: false,
-        message: "Error: Invalid input"
-      })
-    }
+    // if (!req.body.Task_notes) {
+    //   res.status(200).json({
+    //     success: false,
+    //     message: "No notes added"
+    //   })
+    // }
+    // console.log(rows[0].Task_notes)
+    const dateNow = new Date().toISOString().slice(0, 19).replace("T", " ")
+    const addedNotes = "\n" + req.body.Task_notes + "\n" + rows[0].Task_owner + " added on " + dateNow + "\n" + rows[0].Task_notes + "\n"
 
-    const response = await connection.promise().query("UPDATE task SET Task_notes = ? WHERE Task_id = ?", [req.body.Task_notes, Task_id])
+    const response = await connection.promise().query("UPDATE task SET Task_notes = ? WHERE Task_id = ?", [addedNotes, Task_id])
     if (response[0].affectedRows === 0) {
       res.status(500).json({
         success: false,
@@ -770,7 +779,7 @@ const validatePermit = async (App_Acronym, Task_state, user) => {
     }
 
     if (!authorised) {
-      return flase
+      return false
     }
     return true
   } catch (e) {
@@ -788,6 +797,7 @@ exports.promoteTask = async (req, res, next) => {
         success: false,
         message: "Error: Task does not exist"
       })
+      // return
     }
 
     const validate = await validatePermit(rows[0].Task_app_Acronym, rows[0].Task_state, req.user.username)
@@ -800,7 +810,7 @@ exports.promoteTask = async (req, res, next) => {
 
     const Task_state = rows[0].Task_state
     if (Task_state === "Close") {
-      res.status(400).json({
+      res.status(404).json({
         success: false,
         meesage: "Error: You cannot promote a closed task"
       })
@@ -827,7 +837,7 @@ exports.promoteTask = async (req, res, next) => {
     const Task_owner = req.user.username
     let Added_Task_notes
     if (req.body.Task_notes === undefined || null) {
-      Added_Task_notes = Task_owner + " moved " + rows[0].Task_name + " from " + Task_state + " to " + nextState
+      Added_Task_notes = "\n" + Task_owner + " moved " + rows[0].Task_name + " from " + Task_state + " to " + nextState
     }
 
     const Task_notes = Added_Task_notes + "\n" + rows[0].Task_notes
@@ -838,13 +848,68 @@ exports.promoteTask = async (req, res, next) => {
         message: "Error: Failed to promote task"
       })
     }
-
     res.status(200).json({
       success: true,
       message: "Task promoted successfully"
     })
+
+    if (Task_state === "Doing" && nextState === "Done") {
+      sendEmail(rows[0].Task_name, Task_owner, rows[0].Task_app_Acronym)
+    }
   } catch (e) {
     console.log(e)
+  }
+}
+
+async function sendEmail(taskName, taskOwner, Task_app_Acronym) {
+  // try {
+  const [rows, fields] = await connection.promise().query("SELECT * FROM application WHERE App_Acronym = ?", [Task_app_Acronym])
+  const group = rows[0].App_permit_Done
+
+  const [rows2, fields2] = await connection.promise().query("SELECT * FROM user")
+  const users = rows2
+  let emails = []
+  for (let i = 0; i < users.length; i++) {
+    const user = users[i]
+    // console.log(users[i])
+    // console.log(user)
+    // console.log(user.grouplist.slice(1, -1).split(","))
+    // console.log(user.grouplist)
+    const user_groups = user.grouplist.slice(1, -1).split(",")
+    // console.log(user_groups + "<->" + group)
+    if (user_groups.includes(group)) {
+      if (user.email !== null && user.email !== undefined) {
+        // console.log(user + "<_>" + user.email)
+        emails.push(user.email)
+        console.log(emails)
+      }
+    }
+  }
+  // } catch (e) {
+  //   console.log(e)
+  // }
+
+  const transport = nodemailer.createTransport({
+    host: "sandbox.smtp.mailtrap.io",
+    port: 2525,
+    auth: {
+      user: "8a2a19e013f247",
+      pass: "bfab472441df5b"
+    }
+  })
+
+  const mailOptions = {
+    from: `${process.env.SMTP_FROM_NAME} <${process.env.SMTP_FROM_EMAIL}>`,
+    to: emails, //Replace with the actual Project Lead's email
+    subject: `Task promotion`,
+    text: `${taskName} has been promoted to "Done" by ${taskOwner}.`
+  }
+
+  try {
+    await transport.sendMail(mailOptions)
+    console.log("Email sent successfully")
+  } catch (e) {
+    console.log("Failed to send email:", e)
   }
 }
 
@@ -870,7 +935,7 @@ exports.rejectTask = async (req, res, next) => {
 
     const Task_state = rows[0].Task_state
     if (Task_state !== "Done") {
-      res.status(400).json({
+      res.status(404).json({
         success: false,
         message: "Error: Cannot reject a task not in Done"
       })
@@ -880,15 +945,15 @@ exports.rejectTask = async (req, res, next) => {
     const Task_owner = req.user.username
     let Added_Task_notes
     if (req.body.Task_notes === undefined || null) {
-      Added_Task_notes = Task_owner + " moved " + rows[0].Task_name + " from " + Task_state + " to " + nextState
+      Added_Task_notes = "\n" + Task_owner + " moved " + rows[0].Task_name + " from " + Task_state + " to " + nextState
     } else {
       Added_Task_notes = req.body.Task_notes + "\n" + Task_owner + " moved " + rows[0].Task_name + " from " + Task_state + " to " + nextState
     }
 
     const Task_notes = Added_Task_notes + "\n" + rows[0].Task_notes
     let Task_plan
-    if (req.body.Task_plan === undefined || null) {
-      Task_plan = rows[0].Task_plan
+    if (req.body.Task_plan === undefined || JSON.stringify(req.body.Task_plan === "{}") || "") {
+      Task_plan = null
     } else {
       Task_plan = req.body.Task_plan
     }
@@ -907,6 +972,10 @@ exports.rejectTask = async (req, res, next) => {
     })
   } catch (e) {
     console.log(e)
+    res.status(404).json({
+      success: false,
+      message: "Error: Exception error"
+    })
   }
 }
 
@@ -932,7 +1001,7 @@ exports.returnTask = async (req, res, next) => {
 
     const Task_state = rows[0].Task_state
     if (Task_state !== "Doing") {
-      res.status(400).json({
+      res.status(404).json({
         success: false,
         message: "Error: Cannot return a task not in Doing"
       })
@@ -942,7 +1011,7 @@ exports.returnTask = async (req, res, next) => {
     const Task_owner = req.user.username
     let Added_Task_notes
     if (req.body.Task_notes === undefined || null) {
-      Added_Task_notes = Task_owner + " moved " + rows[0].Task_name + " from " + Task_state + " to " + nextState
+      Added_Task_notes = "\n" + Task_owner + " moved " + rows[0].Task_name + " from " + Task_state + " to " + nextState
     } else {
       Added_Task_notes = req.body.Task_notes + "\n" + Task_owner + " moved " + rows[0].Task_name + " from " + Task_state + " to " + nextState
     }
@@ -1033,7 +1102,7 @@ exports.createPlan = async (req, res, next) => {
   try {
     const [rows, fields] = await connection.promise().query("SELECT * FROM plan WHERE Plan_app_Acronym = ? AND Plan_MVP_name = ?", [Plan_app_Acronym, Plan_MVP_name])
     if (rows.length !== 0) {
-      res.status(400).json({
+      res.status(404).json({
         success: false,
         message: "Error: Plan already exist"
       })
@@ -1049,7 +1118,7 @@ exports.createPlan = async (req, res, next) => {
     }
 
     if (!Plan_app_Acronym || !Plan_MVP_name) {
-      res.status(400).json({
+      res.status(404).json({
         success: false,
         message: "Error: Invalid input"
       })
@@ -1104,7 +1173,7 @@ exports.updatePlan = async (req, res, next) => {
     }
 
     if (!Plan_app_Acronym || !Plan_MVP_name) {
-      res.status(400).json({
+      res.status(404).json({
         success: false,
         message: "Error: Invalid input"
       })
@@ -1181,7 +1250,7 @@ exports.assignTaskPlan = async (req, res, next) => {
     }
 
     if (!Plan_app_Acronym || !Plan_MVP_name) {
-      res.status(400).json({
+      res.status(404).json({
         success: false,
         message: "Error: Invalid input"
       })
