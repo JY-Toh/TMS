@@ -460,23 +460,23 @@ exports.updateApp = async (req, res, next) => {
       query += "App_endDate = ?, "
       values.push(req.body.App_endDate)
     }
-    if (req.body.App_permit_create) {
+    if (req.body.App_permit_create || req.body.App_permit_create === "") {
       query += "App_permit_create = ?, "
       values.push(req.body.App_permit_create)
     }
-    if (req.body.App_permit_Open) {
+    if (req.body.App_permit_Open || req.body.App_permit_Open === "") {
       query += "App_permit_Open = ?, "
       values.push(req.body.App_permit_Open)
     }
-    if (req.body.App_permit_toDoList) {
+    if (req.body.App_permit_toDoList || req.body.App_permit_toDoList === "") {
       query += "App_permit_toDoList = ?, "
       values.push(req.body.App_permit_toDoList)
     }
-    if (req.body.App_permit_Doing) {
+    if (req.body.App_permit_Doing || req.body.App_permit_Doing === "") {
       query += "App_permit_Doing = ?, "
       values.push(req.body.App_permit_Doing)
     }
-    if (req.body.App_permit_Done) {
+    if (req.body.App_permit_Done || req.body.App_permit_Done === "") {
       query += "App_permit_Done = ?, "
       values.push(req.body.App_permit_Done)
     }
