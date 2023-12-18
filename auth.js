@@ -48,9 +48,9 @@ exports.authorizeRoles = (...roles) => {
     //if any of the user's groups is included in the roles array, then the user is authorized
     authorised = req.user.grouplist.some(r => roles.includes(r))
     if (!authorised) {
-      res.status(400).json({
+      res.status(403).json({
         success: false,
-        message: "Error: Not allowed to access this resource"
+        message: "Error: Not authorised"
       })
     }
     next()

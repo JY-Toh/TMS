@@ -520,6 +520,7 @@ exports.getAppInfo = async (req, res, next) => {
         message: "Error: Application does not exist"
       })
     }
+    // console.log(rows)
 
     res.status(200).json({
       success: true,
@@ -779,6 +780,7 @@ exports.promoteTask = async (req, res, next) => {
         success: false,
         message: "Error: Not authorised"
       })
+      return
     }
 
     const Task_state = rows[0].Task_state
@@ -1200,6 +1202,7 @@ exports.assignTaskPlan = async (req, res, next) => {
     }
 
     if (!Plan_app_Acronym || !Plan_MVP_name) {
+      npm
       res.status(404).json({
         success: false,
         message: "Error: Invalid input"
