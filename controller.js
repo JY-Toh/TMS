@@ -369,8 +369,9 @@ exports.createApp = async (req, res, next) => {
     if (!App_Acronym || !App_Description || !App_Rnumber) {
       res.status(400).json({
         success: false,
-        message: "Error: Invalid Input"
+        message: "Error: App Acronym, App Description and App Rnumber required"
       })
+      return
     }
 
     const [rows, fields] = await connection.promise().query("SELECT * FROM application WHERE App_Acronym = ?", [App_Acronym])
@@ -379,13 +380,15 @@ exports.createApp = async (req, res, next) => {
         success: false,
         message: "Error: Application already exists"
       })
+      return
     }
 
     if (App_Rnumber < 0 || App_Rnumber % 1 !== 0) {
       res.status(400).json({
         success: false,
-        message: "Error: Invalid Input"
+        message: "Error: Invalid Rnumber"
       })
+      return
     }
 
     if (!App_startDate) {
@@ -422,6 +425,7 @@ exports.createApp = async (req, res, next) => {
         success: false,
         message: "Error: Failed to create application"
       })
+      return
     }
 
     res.status(200).json({
@@ -444,6 +448,7 @@ exports.updateApp = async (req, res, next) => {
         success: false,
         message: "Error: Application does not exist"
       })
+      return
     }
 
     let query = "UPDATE application SET "
@@ -498,6 +503,7 @@ exports.updateApp = async (req, res, next) => {
         success: false,
         message: "Error: Failed to update application"
       })
+      return
     }
 
     res.status(200).json({
@@ -520,7 +526,6 @@ exports.getAppInfo = async (req, res, next) => {
         message: "Error: Application does not exist"
       })
     }
-    // console.log(rows)
 
     res.status(200).json({
       success: true,
@@ -541,6 +546,7 @@ exports.getTasksApp = async (req, res, next) => {
         success: false,
         message: "Error: Application does not exist"
       })
+      return
     }
 
     const application = rows[0]
@@ -550,6 +556,7 @@ exports.getTasksApp = async (req, res, next) => {
         success: false,
         message: "Error: No tasks found"
       })
+      return
     }
 
     res.status(200).json({
@@ -565,7 +572,6 @@ exports.getTasksApp = async (req, res, next) => {
 exports.createTask = async (req, res, next) => {
   let { Task_name, Task_description, Task_notes, Task_plan, Task_app_Acronym } = req.body
   let user = req.user.username
-  console.log("I am here")
 
   try {
     if (!Task_name || !Task_app_Acronym) {
@@ -573,6 +579,7 @@ exports.createTask = async (req, res, next) => {
         success: false,
         message: "Error: Invalid input"
       })
+      return
     }
     if (!Task_plan) {
       Task_plan = null
@@ -584,6 +591,7 @@ exports.createTask = async (req, res, next) => {
         success: false,
         message: "Error: Application does not exist"
       })
+      return
     }
 
     const application = rows[0]
@@ -595,10 +603,10 @@ exports.createTask = async (req, res, next) => {
     const Task_owner = user
     const Task_createDate = new Date().toISOString().slice(0, 19).replace("T", " ")
     //@TODO make it use local timezone
-    console.log(Task_createDate)
+    // console.log(Task_createDate)
 
     if (!Task_notes) {
-      Task_notes = Task_owner + " created " + Task_name + " on the " + Task_createDate + "\n"
+      Task_notes = Task_owner + " created " + Task_name + " on the " + Task_createDate
     }
 
     const response = await connection.promise().query("INSERT INTO task (Task_name, Task_description, Task_notes, Task_id, Task_plan, Task_app_acronym, Task_state, Task_creator, Task_owner, Task_createDate) VALUES (?,?,?,?,?,?,?,?,?,?)", [Task_name, Task_description, Task_notes, Task_id, Task_plan, Task_app_Acronym, Task_state, Task_creator, Task_owner, Task_createDate])
@@ -607,6 +615,7 @@ exports.createTask = async (req, res, next) => {
         success: false,
         message: "Error: Failed to create task"
       })
+      return
     }
 
     const newApp_Rnumber = application.App_Rnumber + 1
@@ -616,6 +625,7 @@ exports.createTask = async (req, res, next) => {
         success: false,
         message: "Error: Incremental er404"
       })
+      return
     }
 
     res.status(200).json({
@@ -658,14 +668,7 @@ exports.updateNotes = async (req, res, next) => {
         success: false,
         message: "Error: Task does not exist"
       })
-    }
-
-    const validate = await validatePermit(rows[0].Task_app_Acronym, rows[0].Task_state, req.user.username)
-    if (!validate) {
-      res.status(403).json({
-        success: false,
-        message: "Error: Not authorised"
-      })
+      return
     }
 
     let addedNotes
@@ -676,7 +679,7 @@ exports.updateNotes = async (req, res, next) => {
       })
     } else {
       const dateNow = new Date().toISOString().slice(0, 19).replace("T", " ")
-      addedNotes = req.body.Task_notes + "\n" + rows[0].Task_owner + " added on " + dateNow + "\n" + rows[0].Task_notes + "\n"
+      addedNotes = req.body.Task_notes + "\n" + rows[0].Task_owner + " added on " + dateNow + "\n_____________________________________________________________________________________________________________\n" + rows[0].Task_notes
 
       const response = await connection.promise().query("UPDATE task SET Task_notes = ? WHERE Task_id = ?", [addedNotes, Task_id])
       if (response[0].affectedRows === 0) {
@@ -684,6 +687,7 @@ exports.updateNotes = async (req, res, next) => {
           success: false,
           message: "Error: Failed to update notes"
         })
+        return
       }
 
       res.status(200).json({
@@ -772,6 +776,7 @@ exports.promoteTask = async (req, res, next) => {
         success: false,
         message: "Error: Task does not exist"
       })
+      return
     }
 
     const validate = await validatePermit(rows[0].Task_app_Acronym, rows[0].Task_state, req.user.username)
@@ -789,6 +794,7 @@ exports.promoteTask = async (req, res, next) => {
         success: false,
         meesage: "Error: You cannot promote a closed task"
       })
+      return
     }
 
     let nextState
@@ -811,10 +817,11 @@ exports.promoteTask = async (req, res, next) => {
 
     const Task_owner = req.user.username
     let Added_Task_notes
+    const dateNow = new Date().toISOString().slice(0, 19).replace("T", " ")
     if (req.body.Task_notes === undefined || null) {
-      Added_Task_notes = Task_owner + " moved " + rows[0].Task_name + " from " + Task_state + " to " + nextState + "\n"
+      Added_Task_notes = Task_owner + " moved " + rows[0].Task_name + " from " + Task_state + " to " + nextState + " on " + dateNow + "\n_____________________________________________________________________________________________________________\n"
     } else {
-      Added_Task_notes = req.body.Task_notes + "\n" + Task_owner + " moved " + rows[0].Task_name + " from " + Task_state + " to " + nextState + "\n"
+      Added_Task_notes = req.body.Task_notes + "\n" + Task_owner + " moved " + rows[0].Task_name + " from " + Task_state + " to " + nextState + " on " + dateNow + "\n_____________________________________________________________________________________________________________\n"
     }
 
     const Task_notes = Added_Task_notes + "\n" + rows[0].Task_notes
@@ -824,6 +831,7 @@ exports.promoteTask = async (req, res, next) => {
         success: false,
         message: "Error: Failed to promote task"
       })
+      return
     }
     res.status(200).json({
       success: true,
@@ -841,6 +849,7 @@ exports.promoteTask = async (req, res, next) => {
 async function sendEmail(taskName, taskOwner, Task_app_Acronym) {
   const [rows, fields] = await connection.promise().query("SELECT * FROM application WHERE App_Acronym = ?", [Task_app_Acronym])
   const group = rows[0].App_permit_Done
+  const dateNow = new Date().toISOString().slice(0, 19).replace("T", " ")
 
   const [rows2, fields2] = await connection.promise().query("SELECT * FROM user")
   const users = rows2
@@ -869,7 +878,7 @@ async function sendEmail(taskName, taskOwner, Task_app_Acronym) {
     from: `${process.env.SMTP_FROM_NAME} <${process.env.SMTP_FROM_EMAIL}>`,
     to: emails,
     subject: `Task promotion`,
-    text: `${taskName} has been promoted to "Done" by ${taskOwner}.`
+    text: `${taskName} has been promoted to "Done" by ${taskOwner} on ${dateNow}.`
   }
 
   try {
@@ -890,6 +899,7 @@ exports.rejectTask = async (req, res, next) => {
         success: false,
         message: "Error: Task does not exist"
       })
+      return
     }
 
     const validate = await validatePermit(rows[0].Task_app_Acronym, rows[0].Task_state, req.user.username)
@@ -898,6 +908,7 @@ exports.rejectTask = async (req, res, next) => {
         success: false,
         message: "Error: Not authorised"
       })
+      return
     }
 
     const Task_state = rows[0].Task_state
@@ -906,20 +917,29 @@ exports.rejectTask = async (req, res, next) => {
         success: false,
         message: "Error: Cannot reject a task not in Done"
       })
+      return
     }
+
+    // if (req.body.Task_plan === null) {
+    //   res.status(404).json({
+    //     success: false,
+    //     message: "Nothing changed"
+    //   })
+    // }
 
     const nextState = "Doing"
     const Task_owner = req.user.username
     let Added_Task_notes
+    const dateNow = new Date().toISOString().slice(0, 19).replace("T", " ")
     if (req.body.Task_notes === undefined || null) {
-      Added_Task_notes = Task_owner + " moved " + rows[0].Task_name + " from " + Task_state + " to " + nextState + "\n"
+      Added_Task_notes = Task_owner + " moved " + rows[0].Task_name + " from " + Task_state + " to " + nextState + " on " + dateNow + "\n_____________________________________________________________________________________________________________\n"
     } else {
-      Added_Task_notes = req.body.Task_notes + "\n" + Task_owner + " moved " + rows[0].Task_name + " from " + Task_state + " to " + nextState + "\n"
+      Added_Task_notes = req.body.Task_notes + "\n" + Task_owner + " moved " + rows[0].Task_name + " from " + Task_state + " to " + nextState + " on " + dateNow + "\n_____________________________________________________________________________________________________________\n"
     }
 
     const Task_notes = Added_Task_notes + rows[0].Task_notes
     let Task_plan
-    if (req.body.Task_plan === undefined || JSON.stringify(req.body.Task_plan === "{}") || "") {
+    if (req.body.Task_plan === null) {
       Task_plan = null
     } else {
       Task_plan = req.body.Task_plan
@@ -931,6 +951,7 @@ exports.rejectTask = async (req, res, next) => {
         success: false,
         message: "Error: Failed to reject task"
       })
+      return
     }
 
     res.status(200).json({
@@ -956,6 +977,7 @@ exports.returnTask = async (req, res, next) => {
         success: false,
         message: "Error: Task does not exist"
       })
+      return
     }
 
     const validate = await validatePermit(rows[0].Task_app_Acronym, rows[0].Task_state, req.user.username)
@@ -964,6 +986,7 @@ exports.returnTask = async (req, res, next) => {
         success: false,
         message: "Error: Not authorised"
       })
+      return
     }
 
     const Task_state = rows[0].Task_state
@@ -972,15 +995,17 @@ exports.returnTask = async (req, res, next) => {
         success: false,
         message: "Error: Cannot return a task not in Doing"
       })
+      return
     }
 
     const nextState = "ToDo"
     const Task_owner = req.user.username
     let Added_Task_notes
+    const dateNow = new Date().toISOString().slice(0, 19).replace("T", " ")
     if (req.body.Task_notes === undefined || null) {
-      Added_Task_notes = Task_owner + " moved " + rows[0].Task_name + " from " + Task_state + " to " + nextState + "\n"
+      Added_Task_notes = Task_owner + " moved " + rows[0].Task_name + " from " + Task_state + " to " + nextState + " on " + dateNow + "\n_____________________________________________________________________________________________________________\n"
     } else {
-      Added_Task_notes = req.body.Task_notes + "\n" + Task_owner + " moved " + rows[0].Task_name + " from " + Task_state + " to " + nextState + "\n"
+      Added_Task_notes = req.body.Task_notes + "\n" + Task_owner + " moved " + rows[0].Task_name + " from " + Task_state + " to " + nextState + " on " + dateNow + "\n_____________________________________________________________________________________________________________\n"
     }
 
     const Task_notes = Added_Task_notes + rows[0].Task_notes
@@ -990,6 +1015,7 @@ exports.returnTask = async (req, res, next) => {
         success: false,
         message: "Error: Failed to return task"
       })
+      return
     }
 
     res.status(200).json({
@@ -1011,6 +1037,7 @@ exports.getPlan = async (req, res, next) => {
         success: false,
         message: "Error: Plan does not exist"
       })
+      return
     }
 
     res.status(200).json({
@@ -1032,6 +1059,7 @@ exports.getPlanApp = async (req, res, next) => {
         success: false,
         message: "Error: Application does not exist"
       })
+      return
     }
 
     const application = rows[0]
@@ -1041,6 +1069,7 @@ exports.getPlanApp = async (req, res, next) => {
         success: false,
         message: "Error: No plans found"
       })
+      return
     }
 
     res.status(200).json({
@@ -1062,6 +1091,7 @@ exports.createPlan = async (req, res, next) => {
         success: false,
         message: "Error: Plan already exist"
       })
+      return
     }
 
     const [rows2, fields2] = await connection.promise().query("SELECT * FROM application WHERE App_Acronym = ?", [Plan_app_Acronym])
@@ -1070,6 +1100,7 @@ exports.createPlan = async (req, res, next) => {
         success: false,
         message: "Error: Application does not exist"
       })
+      return
     }
 
     if (!Plan_app_Acronym || !Plan_MVP_name) {
@@ -1077,6 +1108,7 @@ exports.createPlan = async (req, res, next) => {
         success: false,
         message: "Error: Invalid input"
       })
+      return
     }
 
     let { Plan_startDate, Plan_endDate, Plan_color } = req.body
@@ -1093,6 +1125,7 @@ exports.createPlan = async (req, res, next) => {
         success: false,
         message: "Error: Failed to create plan"
       })
+      return
     }
 
     res.status(200).json({
@@ -1114,6 +1147,7 @@ exports.updatePlan = async (req, res, next) => {
         success: false,
         message: "Error: Plan does not exist"
       })
+      return
     }
 
     const [rows2, fields2] = await connection.promise().query("SELECT * FROM application WHERE App_Acronym = ?", [Plan_app_Acronym])
@@ -1122,6 +1156,7 @@ exports.updatePlan = async (req, res, next) => {
         success: false,
         message: "Error: Application does not exist"
       })
+      return
     }
 
     if (!Plan_app_Acronym || !Plan_MVP_name) {
@@ -1129,6 +1164,7 @@ exports.updatePlan = async (req, res, next) => {
         success: false,
         message: "Error: Invalid input"
       })
+      return
     }
 
     let query = "UPDATE plan SET "
@@ -1161,6 +1197,7 @@ exports.updatePlan = async (req, res, next) => {
         success: false,
         message: "Error: Failed to update plan"
       })
+      return
     }
 
     res.status(200).json({
@@ -1176,13 +1213,17 @@ exports.updatePlan = async (req, res, next) => {
 exports.assignTaskPlan = async (req, res, next) => {
   const { Plan_app_Acronym, Plan_MVP_name } = req.body
   const Task_id = req.params.Task_id
+
   try {
     const [rows, fields] = await connection.promise().query("SELECT * FROM plan WHERE Plan_app_Acronym = ? AND Plan_MVP_name = ?", [Plan_app_Acronym, Plan_MVP_name])
-    if (rows.length === 0) {
-      res.status(404).json({
-        success: false,
-        message: "Error: Plan does not exist"
-      })
+    if (Plan_MVP_name) {
+      if (rows.length === 0) {
+        res.status(404).json({
+          success: false,
+          message: "Error: Plan does not exist"
+        })
+        return
+      }
     }
 
     const [rows2, fields2] = await connection.promise().query("SELECT * FROM task WHERE Task_id = ?", [Task_id])
@@ -1191,30 +1232,27 @@ exports.assignTaskPlan = async (req, res, next) => {
         success: false,
         message: "Error: Task does not exist"
       })
+      return
     }
 
-    const [rows3, fields3] = await connection.promise().query("SELECT * FROM application WHERE App_Acronym = ?", [Plan_app_Acronym])
-    if (rows3.length === 0) {
-      res.status(404).json({
-        success: false,
-        message: "Error: Application does not exist"
-      })
-    }
-
-    if (!Plan_app_Acronym || !Plan_MVP_name) {
-      npm
-      res.status(404).json({
-        success: false,
-        message: "Error: Invalid input"
-      })
+    if (Plan_app_Acronym) {
+      const [rows3, fields3] = await connection.promise().query("SELECT * FROM application WHERE App_Acronym = ?", [Plan_app_Acronym])
+      if (rows3.length === 0) {
+        res.status(404).json({
+          success: false,
+          message: "Error: Application does not exist"
+        })
+        return
+      }
     }
 
     const Task_owner = req.user.username
     let Added_Task_notes
-    if (req.body.Task_notes === undefined || null) {
-      Added_Task_notes = Task_owner + " assigned " + rows2.Task_name + " to " + Plan_MVP_name + "\n"
+    const dateNow = new Date().toISOString().slice(0, 19).replace("T", " ")
+    if (req.body.Task_notes === "") {
+      Added_Task_notes = Task_owner + " assigned " + rows2.Task_name + " to " + Plan_MVP_name + " on " + dateNow + "\n_____________________________________________________________________________________________________________\n"
     } else {
-      Added_Task_notes = req.body.Task_notes + "\n" + Task_owner + " assigned " + rows2[0].Task_name + " to " + Plan_MVP_name + "\n"
+      Added_Task_notes = req.body.Task_notes + "\n" + Task_owner + " assigned " + rows2[0].Task_name + " to " + Plan_MVP_name + " on " + dateNow + "\n_____________________________________________________________________________________________________________\n"
     }
 
     const Task_notes = Added_Task_notes + rows2[0].Task_notes
@@ -1224,6 +1262,7 @@ exports.assignTaskPlan = async (req, res, next) => {
         success: false,
         message: "Error: Failed to assign plan to task"
       })
+      return
     }
 
     res.status(200).json({

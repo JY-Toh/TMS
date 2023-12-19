@@ -37,6 +37,6 @@ router.route("/register").post(isAuthenticatedUser, authorizeRoles("admin"), reg
 router.route("/addGroup").post(isAuthenticatedUser, authorizeRoles("admin"), addGroup)
 router.route("/updateUser").post(isAuthenticatedUser, authorizeRoles("admin"), updateUser)
 router.route("/statusChange").post(isAuthenticatedUser, authorizeRoles("admin"), statusChange)
-router.route("/viewGroups").get(isAuthenticatedUser, authorizeRoles("admin"), viewGroups)
+router.route("/viewGroups").get(isAuthenticatedUser, viewGroups)
 
 module.exports = router
