@@ -920,21 +920,14 @@ exports.rejectTask = async (req, res, next) => {
       return
     }
 
-    // if (req.body.Task_plan === null) {
-    //   res.status(404).json({
-    //     success: false,
-    //     message: "Nothing changed"
-    //   })
-    // }
-
     const nextState = "Doing"
     const Task_owner = req.user.username
     let Added_Task_notes
     const dateNow = new Date().toISOString().slice(0, 19).replace("T", " ")
     if (req.body.Task_notes === undefined || null) {
-      Added_Task_notes = Task_owner + " moved " + rows[0].Task_name + " from " + Task_state + " to " + nextState + " on " + dateNow + "\n_____________________________________________________________________________________________________________\n"
+      Added_Task_notes = Task_owner + " reassigned " + rows[0].Task_name + " from " + rows[0].Task_plan + " to " + req.body.Task_plan + "\n" + Task_owner + " moved " + rows[0].Task_name + " from " + Task_state + " to " + nextState + " on " + dateNow + "\n_____________________________________________________________________________________________________________\n"
     } else {
-      Added_Task_notes = req.body.Task_notes + "\n" + Task_owner + " moved " + rows[0].Task_name + " from " + Task_state + " to " + nextState + " on " + dateNow + "\n_____________________________________________________________________________________________________________\n"
+      Added_Task_notes = req.body.Task_notes + "\n" + Task_owner + " reassigned " + rows[0].Task_name + " from " + rows[0].Task_plan + " to " + req.body.Task_plan + "\n" + Task_owner + " moved " + rows[0].Task_name + " from " + Task_state + " to " + nextState + " on " + dateNow + "\n_____________________________________________________________________________________________________________\n"
     }
 
     const Task_notes = Added_Task_notes + rows[0].Task_notes
@@ -1250,7 +1243,7 @@ exports.assignTaskPlan = async (req, res, next) => {
     let Added_Task_notes
     const dateNow = new Date().toISOString().slice(0, 19).replace("T", " ")
     if (req.body.Task_notes === "") {
-      Added_Task_notes = Task_owner + " assigned " + rows2.Task_name + " to " + Plan_MVP_name + " on " + dateNow + "\n_____________________________________________________________________________________________________________\n"
+      Added_Task_notes = Task_owner + " assigned " + rows2[0].Task_name + " to " + Plan_MVP_name + " on " + dateNow + "\n_____________________________________________________________________________________________________________\n"
     } else {
       Added_Task_notes = req.body.Task_notes + "\n" + Task_owner + " assigned " + rows2[0].Task_name + " to " + Plan_MVP_name + " on " + dateNow + "\n_____________________________________________________________________________________________________________\n"
     }
