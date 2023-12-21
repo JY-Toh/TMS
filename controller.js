@@ -1,7 +1,7 @@
 const connection = require("./config/database")
 const jwt = require("jsonwebtoken")
 const bcrypt = require("bcryptjs")
-const { authorizeRoles } = require("./auth")
+// const { authorizeRoles } = require("./auth")
 const nodemailer = require("nodemailer")
 
 // Login a user => /login
@@ -606,7 +606,7 @@ exports.createTask = async (req, res, next) => {
     // console.log(Task_createDate)
 
     if (!Task_notes) {
-      Task_notes = Task_owner + " created " + Task_name + " on the " + Task_createDate
+      Task_notes = Task_owner + " created " + Task_name + " on the " + Task_createDate + "\nCurrent task state: " + Task_state
     }
 
     const response = await connection.promise().query("INSERT INTO task (Task_name, Task_description, Task_notes, Task_id, Task_plan, Task_app_acronym, Task_state, Task_creator, Task_owner, Task_createDate) VALUES (?,?,?,?,?,?,?,?,?,?)", [Task_name, Task_description, Task_notes, Task_id, Task_plan, Task_app_Acronym, Task_state, Task_creator, Task_owner, Task_createDate])
@@ -679,7 +679,7 @@ exports.updateNotes = async (req, res, next) => {
       })
     } else {
       const dateNow = new Date().toISOString().slice(0, 19).replace("T", " ")
-      addedNotes = req.body.Task_notes + "\n" + rows[0].Task_owner + " added on " + dateNow + "\n_____________________________________________________________________________________________________________\n" + rows[0].Task_notes
+      addedNotes = req.body.Task_notes + "\n" + rows[0].Task_owner + " added on " + dateNow + "\nCurrent task state: " + rows[0].Task_state + "\n_____________________________________________________________________________________________________________\n" + rows[0].Task_notes
 
       const response = await connection.promise().query("UPDATE task SET Task_notes = ? WHERE Task_id = ?", [addedNotes, Task_id])
       if (response[0].affectedRows === 0) {
@@ -1243,9 +1243,9 @@ exports.assignTaskPlan = async (req, res, next) => {
     let Added_Task_notes
     const dateNow = new Date().toISOString().slice(0, 19).replace("T", " ")
     if (req.body.Task_notes === "") {
-      Added_Task_notes = Task_owner + " assigned " + rows2[0].Task_name + " to " + Plan_MVP_name + " on " + dateNow + "\n_____________________________________________________________________________________________________________\n"
+      Added_Task_notes = Task_owner + " assigned " + rows2[0].Task_name + " to " + Plan_MVP_name + " on " + dateNow + "\nCurrent task state: " + rows2[0].Task_state + "\n_____________________________________________________________________________________________________________\n"
     } else {
-      Added_Task_notes = req.body.Task_notes + "\n" + Task_owner + " assigned " + rows2[0].Task_name + " to " + Plan_MVP_name + " on " + dateNow + "\n_____________________________________________________________________________________________________________\n"
+      Added_Task_notes = req.body.Task_notes + "\n" + Task_owner + " assigned " + rows2[0].Task_name + " to " + Plan_MVP_name + " on " + dateNow + "\nCurrent task state: " + rows2[0].Task_state + "\n_____________________________________________________________________________________________________________\n"
     }
 
     const Task_notes = Added_Task_notes + rows2[0].Task_notes
